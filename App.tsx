@@ -34,6 +34,8 @@ export const useApp = () => {
   return context;
 };
 
+const API_URL = (import.meta as any).env.VITE_API_URL || '';
+
 const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('fr');
   
@@ -53,9 +55,9 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const loadInitialData = async () => {
       try {
         const [usersRes, resRes, waitRes] = await Promise.all([
-          fetch('/api/users').then(r => r.json()),
-          fetch('/api/reservations').then(r => r.json()),
-          fetch('/api/waitlist').then(r => r.json())
+          fetch(`${API_URL}/api/users`).then(r => r.json()),
+          fetch(`${API_URL}/api/reservations`).then(r => r.json()),
+          fetch(`${API_URL}/api/waitlist`).then(r => r.json())
         ]);
         if (Array.isArray(usersRes)) setRegisteredUsers(usersRes);
         if (Array.isArray(resRes)) setReservations(resRes);
@@ -77,7 +79,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Sync users to backend
   useEffect(() => {
     if (!isLoaded) return;
-    fetch('/api/users/sync', {
+    fetch(`${API_URL}/api/users/sync`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify(registeredUsers)
@@ -87,7 +89,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Sync reservations to backend
   useEffect(() => {
     if (!isLoaded) return;
-    fetch('/api/reservations/sync', {
+    fetch(`${API_URL}/api/reservations/sync`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify(reservations)
@@ -97,7 +99,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Sync waitlist to backend
   useEffect(() => {
     if (!isLoaded) return;
-    fetch('/api/waitlist/sync', {
+    fetch(`${API_URL}/api/waitlist/sync`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify(waitlist)
