@@ -24,7 +24,8 @@ export interface User {
   email: string;
   password?: string;
   name?: string;
-  blocked?: boolean; // Nouvelle propriété pour la gestion admin
+  blocked?: boolean;
+  subscriptionEndDate?: string; // Format ISO: '2026-04-28'
 }
 
 export interface Reservation {

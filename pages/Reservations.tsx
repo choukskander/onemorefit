@@ -92,8 +92,38 @@ const Reservations: React.FC = () => {
     return user && reservations.some(r => r.classId === classId && r.userEmail === user.email);
   };
 
+  // Retourne l'état temporel d'un cours : 'available' | 'in_progress' | 'past'
+  const CLASS_DURATION_MINUTES = 60; // Durée par défaut d'un cours
+
+  const getClassStatus = (classDay: string, classTime: string): 'available' | 'in_progress' | 'past' => {
+    const today = getTodayInFrench();
+    if (classDay !== today) return 'available'; // Autre jour = disponible
+
+    const now = new Date();
+    const [hours, minutes] = classTime.split(':').map(Number);
+
+    const classStart = new Date();
+    classStart.setHours(hours, minutes, 0, 0);
+
+    const classEnd = new Date(classStart);
+    classEnd.setMinutes(classEnd.getMinutes() + CLASS_DURATION_MINUTES);
+
+    if (now < classStart) return 'available';
+    if (now >= classStart && now < classEnd) return 'in_progress';
+    return 'past';
+  };
+
   const handleBook = (gymClass: GymClass) => {
     if (!user) return;
+    const status = getClassStatus(gymClass.day, gymClass.time);
+    if (status === 'in_progress') {
+      setMessage({ type: 'error', text: "Ce cours est actuellement en cours, la réservation est fermée." });
+      return;
+    }
+    if (status === 'past') {
+      setMessage({ type: 'error', text: "Ce cours est déjà terminé, vous ne pouvez plus le réserver." });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -255,18 +285,30 @@ const Reservations: React.FC = () => {
             const filled = getSpotsFilled(item.id);
             const isFull = filled >= item.capacity;
             const reserved = isAlreadyReserved(item.id);
+            const classStatus = getClassStatus(item.day, item.time);
+            const isInProgress = classStatus === 'in_progress';
+            const isPast = classStatus === 'past';
+            const isUnavailable = isInProgress || isPast;
 
             return (
               <div 
                 key={item.id} 
                 className={`bg-zinc-900 rounded-3xl p-8 border transition-all duration-300 ${
-                  reserved ? 'border-yellow-500/50 shadow-2xl shadow-yellow-500/5' : 'border-zinc-800 hover:border-zinc-700'
+                  isPast
+                    ? 'border-zinc-800/40 opacity-55'
+                    : isInProgress
+                      ? 'border-orange-500/30 shadow-lg shadow-orange-500/5'
+                      : reserved 
+                        ? 'border-yellow-500/50 shadow-2xl shadow-yellow-500/5' 
+                        : 'border-zinc-800 hover:border-zinc-700'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                   <div className="flex-1">
-                    <div className="flex items-center gap-6 mb-4">
-                      <div className="flex items-center text-yellow-500 text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex items-center flex-wrap gap-3 mb-4">
+                      <div className={`flex items-center text-[10px] font-black uppercase tracking-widest ${
+                        isPast ? 'text-zinc-600' : isInProgress ? 'text-orange-400' : 'text-yellow-500'
+                      }`}>
                         <Clock size={16} className="mr-2" />
                         {item.time}
                       </div>
@@ -274,15 +316,37 @@ const Reservations: React.FC = () => {
                         <Users size={16} className="mr-2" />
                         {filled} / {item.capacity}
                       </div>
+                      {isInProgress && (
+                        <span className="bg-orange-500/10 text-orange-400 px-3 py-1 rounded-full text-[9px] font-black uppercase border border-orange-500/30 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse inline-block"></span>
+                          En cours
+                        </span>
+                      )}
+                      {isPast && (
+                        <span className="bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full text-[9px] font-black uppercase border border-zinc-700">
+                          Terminé
+                        </span>
+                      )}
                     </div>
-                    <h3 className="text-3xl font-black text-white uppercase tracking-tight italic mb-3">{item.name}</h3>
+                    <h3 className={`text-3xl font-black uppercase tracking-tight italic mb-3 ${
+                      isPast ? 'text-zinc-500' : isInProgress ? 'text-orange-200' : 'text-white'
+                    }`}>{item.name}</h3>
                     <p className="text-zinc-500 text-sm max-w-md leading-relaxed">
                         Session intensive de {item.type} pour sculpter votre corps et renforcer votre mental.
                     </p>
                   </div>
                   
                   <div className="flex-shrink-0">
-                    {reserved ? (
+                    {isPast ? (
+                      <div className="bg-zinc-800/50 text-zinc-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase border border-zinc-700/50 flex items-center gap-3">
+                        <Clock size={16} /> Cours terminé
+                      </div>
+                    ) : isInProgress ? (
+                      <div className="bg-orange-500/10 text-orange-400 px-6 py-3 rounded-xl font-black text-[10px] uppercase border border-orange-500/30 flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                        En cours
+                      </div>
+                    ) : reserved ? (
                       <div className="bg-yellow-500/10 text-yellow-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase italic border border-yellow-500/30 flex items-center gap-3">
                         <CheckCircle2 size={16} /> {t('already_reserved')}
                       </div>
@@ -308,8 +372,10 @@ const Reservations: React.FC = () => {
                 
                 <div className="mt-8 bg-zinc-950 h-2 rounded-full overflow-hidden">
                     <div 
-                        className={`h-full transition-all duration-1000 ease-out ${isFull ? 'bg-zinc-700' : 'bg-yellow-500'}`} 
-                        style={{ width: `${(filled / item.capacity) * 100}%` }}
+                        className={`h-full transition-all duration-1000 ease-out ${
+                          isPast ? 'bg-zinc-800' : isInProgress ? 'bg-orange-500/60' : isFull ? 'bg-zinc-700' : 'bg-yellow-500'
+                        }`} 
+                        style={{ width: `${isInProgress ? 100 : (filled / item.capacity) * 100}%` }}
                     />
                 </div>
               </div>

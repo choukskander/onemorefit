@@ -257,6 +257,29 @@ const Navbar = () => {
                 Dashboard Admin
               </Link>
             )}
+
+            {/* LOGOUT / LOGIN MOBILE */}
+            <div className="px-3 py-3 border-t border-zinc-800 mt-2">
+              {user ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-zinc-400 text-xs font-bold truncate">{user.name || user.email}</span>
+                  <button
+                    onClick={() => { setUser(null); setIsOpen(false); }}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded text-xs uppercase font-black tracking-widest transition-colors"
+                  >
+                    Déconnexion
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/reservations"
+                  onClick={() => setIsOpen(false)}
+                  className="block w-full text-center bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-3 rounded font-black text-xs uppercase tracking-widest transition-all"
+                >
+                  Connexion
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -34,10 +34,10 @@ const Contact: React.FC = () => {
               <div>
                 <label className="block text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Sujet</label>
                 <select className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-yellow-500 transition-colors appearance-none">
-                    <option>Demande d'adhésion</option>
-                    <option>Offre Entreprise</option>
-                    <option>Coaching Personnel</option>
-                    <option>Support Général</option>
+                  <option>Demande d'adhésion</option>
+                  <option>Offre Entreprise</option>
+                  <option>Coaching Personnel</option>
+                  <option>Support Général</option>
                 </select>
               </div>
               <div>
@@ -55,9 +55,9 @@ const Contact: React.FC = () => {
           <div className="space-y-12">
             <div className="grid grid-cols-1 gap-8">
               {[
-                { icon: <MapPin className="text-yellow-500" />, title: "Adresse", content: "123 Rue du Fitness, Ville, France" },
-                { icon: <Mail className="text-yellow-500" />, title: "Email", content: "contact@onemorefit.com" },
-                { icon: <Phone className="text-yellow-500" />, title: "Téléphone", content: "+33 1 23 45 67 89" }
+                { icon: <MapPin className="text-yellow-500" />, title: "Adresse", content: "Beni khalled, Tunisia, 8021" },
+                { icon: <Mail className="text-yellow-500" />, title: "Email", content: "onemorefitnes80@gmail.com" },
+                { icon: <Phone className="text-yellow-500" />, title: "Téléphone", content: "+216 29 248 405" }
               ].map((item, i) => (
                 <div key={i} className="flex gap-6 items-start group">
                   <div className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center border border-zinc-800 group-hover:border-yellow-500 transition-colors shadow-lg">
