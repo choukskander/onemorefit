@@ -109,6 +109,28 @@ const AdminDashboard: React.FC = () => {
     setTimeout(() => setSubStatusMsg(null), 4000);
   };
 
+  const handleSetSpecificDate = async (email: string, dateStr: string) => {
+    try {
+      setSubStatusMsg({ email, text: "Mise à jour...", type: 'success' });
+      const resp = await fetch(`${API_URL}/api/users/${email}/subscription`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionEndDate: dateStr })
+      });
+
+      if (!resp.ok) throw new Error("Erreur serveur");
+
+      setRegisteredUsers(registeredUsers.map(u => 
+        u.email === email ? { ...u, subscriptionEndDate: dateStr } : u
+      ));
+      
+      setSubStatusMsg({ email, text: "📅 Date enregistrée !", type: 'success' });
+    } catch (err) {
+      setSubStatusMsg({ email, text: "Erreur de mise à jour", type: 'error' });
+    }
+    setTimeout(() => setSubStatusMsg(null), 3000);
+  };
+
   // --- ACTIONS RÉSERVATIONS ---
   const cancelReservation = (id: string) => {
     if (window.confirm("Annuler cette réservation ?")) {
@@ -235,16 +257,18 @@ const AdminDashboard: React.FC = () => {
                       <p className="text-zinc-500 text-xs">{u.email}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex flex-col gap-1">
-                        {u.subscriptionEndDate ? (
-                          <>
-                            <p className="text-white text-xs font-bold font-mono">{u.subscriptionEndDate}</p>
-                            <p className={`text-[9px] uppercase font-black ${new Date(u.subscriptionEndDate) < new Date() ? 'text-red-500' : 'text-zinc-500'}`}>
-                              {new Date(u.subscriptionEndDate) < new Date() ? 'Expiré' : 'Actif'}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-zinc-600 italic text-[10px]">Aucun abonnement</p>
+                      <div className="flex flex-col gap-2">
+                        <input 
+                          type="date" 
+                          value={u.subscriptionEndDate || ''} 
+                          onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
+                          className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white focus:border-yellow-500 outline-none transition-all cursor-pointer"
+                        />
+                        
+                        {u.subscriptionEndDate && (
+                          <p className={`text-[9px] uppercase font-black px-1 ${new Date(u.subscriptionEndDate) < new Date() ? 'text-red-500' : 'text-zinc-500'}`}>
+                            {new Date(u.subscriptionEndDate) < new Date() ? '• Expiré' : '• Actif'}
+                          </p>
                         )}
                         
                         {subStatusMsg?.email === u.email && (
@@ -357,17 +381,16 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Sub info Mobile */}
                 <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800">
-                   <div className="flex items-center justify-between mb-3">
+                   <div className="flex items-center justify-between mb-3 gap-2">
                       <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest flex items-center gap-2">
                         <History size={12} /> Expiration
                       </span>
-                      {u.subscriptionEndDate ? (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${new Date(u.subscriptionEndDate) < new Date() ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
-                          {u.subscriptionEndDate}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-zinc-700 italic">Non définie</span>
-                      )}
+                      <input 
+                        type="date" 
+                        value={u.subscriptionEndDate || ''} 
+                        onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
+                        className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white focus:border-yellow-500 outline-none"
+                      />
                    </div>
 
                    {subStatusMsg?.email === u.email && (
