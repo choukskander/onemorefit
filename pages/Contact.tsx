@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useApp } from '../App';
+import { useApp } from '../AppContext';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 
 const Contact: React.FC = () => {

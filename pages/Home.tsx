@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useApp } from '../App';
+import { useApp } from '../AppContext';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Activity, Dumbbell, Zap, Bike } from 'lucide-react';
 import { ClassType } from '../types';

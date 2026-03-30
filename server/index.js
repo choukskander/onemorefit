@@ -66,9 +66,19 @@ const waitlistSchema = new mongoose.Schema({
   classId: { type: String, required: true }
 }, { timestamps: true });
 
+const gymClassSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  type: { type: String, required: true },
+  day: { type: String, required: true },
+  time: { type: String, required: true },
+  capacity: { type: Number, required: true }
+}, { timestamps: true });
+
 const User = mongoose.model('User', userSchema);
 const Reservation = mongoose.model('Reservation', reservationSchema);
 const Waitlist = mongoose.model('Waitlist', waitlistSchema);
+const GymClass = mongoose.model('GymClass', gymClassSchema);
 
 // ------------------------------------------------------------------
 // Email Service (Nodemailer + Gmail)
@@ -225,10 +235,19 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users/sync', async (req, res) => {
   try {
     const users = req.body;
-    await User.deleteMany({});
-    await User.insertMany(users);
-    res.json({ message: 'Users synchronized' });
+    console.log(`🔄 Syncing ${users.length} users...`);
+    // Protect admin from being deleted during sync if needed
+    const admin = await User.findOne({ email: 'admin@gmail.com' });
+    await User.deleteMany({ email: { $ne: 'admin@gmail.com' } });
+    
+    const usersToInsert = users.filter((u) => u.email !== 'admin@gmail.com');
+    if (usersToInsert.length > 0) {
+      await User.insertMany(usersToInsert);
+    }
+    console.log(`✅ Users synchronized (Admin preserved, ${usersToInsert.length} others)`);
+    res.json({ message: 'Users synchronized (Admin preserved)' });
   } catch (err) {
+    console.error('❌ Sync error users:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -286,12 +305,15 @@ app.get('/api/reservations', async (req, res) => {
 app.post('/api/reservations/sync', async (req, res) => {
   try {
     const reservations = req.body;
+    console.log(`🔄 Syncing ${reservations.length} reservations...`);
     await Reservation.deleteMany({});
     if (reservations.length > 0) {
       await Reservation.insertMany(reservations);
     }
+    console.log(`✅ Reservations synchronized`);
     res.json({ message: 'Reservations synchronized' });
   } catch (err) {
+    console.error('❌ Sync error reservations:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -309,17 +331,68 @@ app.get('/api/waitlist', async (req, res) => {
 app.post('/api/waitlist/sync', async (req, res) => {
   try {
     const waitlists = req.body;
+    console.log(`🔄 Syncing ${waitlists.length} waitlist entries...`);
     await Waitlist.deleteMany({});
     if (waitlists.length > 0) {
       await Waitlist.insertMany(waitlists);
     }
+    console.log(`✅ Waitlist synchronized`);
     res.json({ message: 'Waitlist synchronized' });
+  } catch (err) {
+    console.error('❌ Sync error waitlist:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- GYM CLASSES ---
+app.get('/api/classes', async (req, res) => {
+  try {
+    const classes = await GymClass.find();
+    res.json(classes.map(c => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      day: c.day,
+      time: c.time,
+      capacity: c.capacity
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+app.post('/api/classes/sync', async (req, res) => {
+  try {
+    const classes = req.body;
+    console.log(`🔄 Syncing ${classes.length} classes...`);
+    await GymClass.deleteMany({});
+    if (classes.length > 0) {
+      await GymClass.insertMany(classes);
+    }
+    console.log(`✅ Classes synchronized`);
+    res.json({ message: 'Classes synchronized' });
+  } catch (err) {
+    console.error('❌ Sync error classes:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  
+  // Seed admin if not exists
+  try {
+    const admin = await User.findOne({ email: 'admin@gmail.com' });
+    if (!admin) {
+      await User.create({
+        email: 'admin@gmail.com',
+        password: '12345678',
+        name: 'Administrateur'
+      });
+      console.log('👑 Admin user seeded');
+    }
+  } catch (err) {
+    console.error('Failed to seed admin:', err);
+  }
 });

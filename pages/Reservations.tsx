@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useApp } from '../App';
-import { GYM_SCHEDULE, DAYS_FR_TO_EN } from '../constants';
+import { useApp } from '../AppContext';
+import { DAYS_FR_TO_EN } from '../constants';
 import { CheckCircle2, AlertCircle, Users, Clock, Loader2, Calendar, ShieldX } from 'lucide-react';
 import { GymClass, User } from '../types';
 
@@ -10,7 +10,8 @@ const Reservations: React.FC = () => {
     t, user, setUser, 
     registeredUsers, setRegisteredUsers, 
     reservations, setReservations, 
-    waitlist, setWaitlist, language 
+    waitlist, setWaitlist, 
+    gymClasses, language 
   } = useApp();
 
   const getTodayInFrench = () => {
@@ -155,7 +156,7 @@ const Reservations: React.FC = () => {
     }, 800);
   };
 
-  const dayClasses = GYM_SCHEDULE.filter(c => c.day === selectedDay).sort((a,b) => a.time.localeCompare(b.time));
+  const dayClasses = gymClasses.filter(c => c.day === selectedDay).sort((a,b) => a.time.localeCompare(b.time));
 
   if (!user) {
     return (

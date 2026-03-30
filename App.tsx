@@ -1,124 +1,15 @@
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Language, User, Reservation, WaitlistEntry } from './types';
-import { TRANSLATIONS, GYM_SCHEDULE } from './constants';
+import { AppProvider, useApp } from './AppContext';
 import Home from './pages/Home';
 import About from './pages/About';
 import Schedule from './pages/Schedule';
 import Reservations from './pages/Reservations';
 import Contact from './pages/Contact';
-import AdminDashboard from './pages/AdminDashboard'; // Import du nouveau dashboard
+import AdminDashboard from './pages/AdminDashboard';
 import { Menu, X, Facebook, Instagram, Twitter, Globe, ShieldAlert } from 'lucide-react';
 
-// Context Definition
-interface AppContextType {
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  user: User | null;
-  setUser: (user: User | null) => void;
-  registeredUsers: User[];
-  setRegisteredUsers: React.Dispatch<React.SetStateAction<User[]>>;
-  reservations: Reservation[];
-  setReservations: React.Dispatch<React.SetStateAction<Reservation[]>>;
-  waitlist: WaitlistEntry[];
-  setWaitlist: React.Dispatch<React.SetStateAction<WaitlistEntry[]>>;
-  t: (key: string) => string;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) throw new Error("useApp must be used within AppProvider");
-  return context;
-};
-
-const API_URL = (import.meta as any).env.VITE_API_URL || '';
-
-const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('fr');
-  
-  const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
-
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('omf_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load initial state from backend API
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [usersRes, resRes, waitRes] = await Promise.all([
-          fetch(`${API_URL}/api/users`).then(r => r.json()),
-          fetch(`${API_URL}/api/reservations`).then(r => r.json()),
-          fetch(`${API_URL}/api/waitlist`).then(r => r.json())
-        ]);
-        if (Array.isArray(usersRes)) setRegisteredUsers(usersRes);
-        if (Array.isArray(resRes)) setReservations(resRes);
-        if (Array.isArray(waitRes)) setWaitlist(waitRes);
-      } catch (err) {
-        console.error("Failed to load data from server:", err);
-      } finally {
-        setIsLoaded(true);
-      }
-    };
-    loadInitialData();
-  }, []);
-
-  // Save current user session locally
-  useEffect(() => {
-    localStorage.setItem('omf_user', JSON.stringify(user));
-  }, [user]);
-
-  // Sync users to backend
-  useEffect(() => {
-    if (!isLoaded) return;
-    fetch(`${API_URL}/api/users/sync`, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(registeredUsers)
-    }).catch(console.error);
-  }, [registeredUsers, isLoaded]);
-
-  // Sync reservations to backend
-  useEffect(() => {
-    if (!isLoaded) return;
-    fetch(`${API_URL}/api/reservations/sync`, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(reservations)
-    }).catch(console.error);
-  }, [reservations, isLoaded]);
-
-  // Sync waitlist to backend
-  useEffect(() => {
-    if (!isLoaded) return;
-    fetch(`${API_URL}/api/waitlist/sync`, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(waitlist)
-    }).catch(console.error);
-  }, [waitlist, isLoaded]);
-
-  const t = (key: string) => {
-    const keys = TRANSLATIONS[language] as any;
-    return keys[key] || key;
-  };
-
-  return (
-    <AppContext.Provider value={{
-      language, setLanguage, user, setUser, registeredUsers, setRegisteredUsers, reservations, setReservations, waitlist, setWaitlist, t
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
-};
 
 const Logo = () => (
   <div className="flex items-center space-x-3">

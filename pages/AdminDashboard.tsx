@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { useApp } from '../App';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../AppContext';
 import { GYM_SCHEDULE } from '../constants';
 import { Users, BookOpen, Ban, Trash2, ShieldCheck, Search, PlusCircle, CheckCircle, Clock } from 'lucide-react';
 import { Reservation, User } from '../types';
@@ -9,27 +10,46 @@ import { Mail, CalendarPlus, Send, History } from 'lucide-react';
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
 
 const AdminDashboard: React.FC = () => {
-  const { 
-    user, registeredUsers, setRegisteredUsers, 
-    reservations, setReservations, 
-    waitlist, setWaitlist 
+  const {
+    user, registeredUsers, setRegisteredUsers,
+    reservations, setReservations,
+    waitlist, setWaitlist,
+    gymClasses, setGymClasses
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'reservations'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'reservations' | 'schedule'>('users');
   const [userSearch, setUserSearch] = useState('');
   const [resSearch, setResSearch] = useState('');
-  
-  // States pour ajout manuel de réservation
-  const [showAddRes, setShowAddRes] = useState(false);
+
   const [manualUserEmail, setManualUserEmail] = useState('');
   const [manualClassId, setManualClassId] = useState('');
-  
+  const [showAddRes, setShowAddRes] = useState(false);
+
+  // States pour gestion du planning
+  const [showAddClass, setShowAddClass] = useState(false);
+  const [newClass, setNewClass] = useState({
+    name: '',
+    type: 'Pump',
+    day: 'Lundi',
+    time: '08:00',
+    capacity: 20
+  });
+
   // States pour abonnements
   const [editingSub, setEditingSub] = useState<string | null>(null);
   const [subStatusMsg, setSubStatusMsg] = useState<{ email: string, text: string, type: 'success' | 'error' } | null>(null);
 
-  // --- VÉRIFICATION DE SÉCURITÉ ---
-  // On utilise le contexte global puisque la page de connexion vérifie maintenant les mots de passe de façon sécurisée
+  const navigate = useNavigate();
+
+  // --- VÉRIFICATION DE SÉCURITÉ & REDIRECTION ---
+  useEffect(() => {
+    // Si l'utilisateur se déconnecte, on le renvoie à l'accueil sans alerte
+    if (!user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Si pas admin, on affiche le message d'accès refusé (cas de lien direct sans être admin)
   if (!user || user.email !== 'admin@gmail.com') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -44,7 +64,7 @@ const AdminDashboard: React.FC = () => {
 
   // --- ACTIONS UTILISATEURS ---
   const toggleBlockUser = (email: string) => {
-    setRegisteredUsers(registeredUsers.map(u => 
+    setRegisteredUsers(registeredUsers.map(u =>
       u.email === email ? { ...u, blocked: !u.blocked } : u
     ));
   };
@@ -81,10 +101,10 @@ const AdminDashboard: React.FC = () => {
       if (!resp.ok) throw new Error("Erreur de mise à jour");
 
       // Update local state
-      setRegisteredUsers(registeredUsers.map(u => 
+      setRegisteredUsers(registeredUsers.map(u =>
         u.email === email ? { ...u, subscriptionEndDate: newEndDate } : u
       ));
-      
+
       setSubStatusMsg({ email, text: `Abonnement prolongé jusqu'au ${newEndDate}`, type: 'success' });
       setTimeout(() => setSubStatusMsg(null), 3000);
       setEditingSub(null);
@@ -99,7 +119,7 @@ const AdminDashboard: React.FC = () => {
     try {
       const resp = await fetch(`${API_URL}/api/send-reminder/${email}`, { method: 'POST' });
       const data = await resp.json();
-      
+
       if (!resp.ok) throw new Error(data.error || "Erreur d'envoi");
 
       setSubStatusMsg({ email, text: "📧 Rappel envoyé avec succès !", type: 'success' });
@@ -120,10 +140,10 @@ const AdminDashboard: React.FC = () => {
 
       if (!resp.ok) throw new Error("Erreur serveur");
 
-      setRegisteredUsers(registeredUsers.map(u => 
+      setRegisteredUsers(registeredUsers.map(u =>
         u.email === email ? { ...u, subscriptionEndDate: dateStr } : u
       ));
-      
+
       setSubStatusMsg({ email, text: "📅 Date enregistrée !", type: 'success' });
     } catch (err) {
       setSubStatusMsg({ email, text: "Erreur de mise à jour", type: 'error' });
@@ -145,15 +165,15 @@ const AdminDashboard: React.FC = () => {
     // Vérifier si l'utilisateur existe
     const targetUser = registeredUsers.find(u => u.email.toLowerCase() === manualUserEmail.toLowerCase());
     if (!targetUser) {
-        alert("Cet utilisateur n'existe pas encore.");
-        return;
+      alert("Cet utilisateur n'existe pas encore.");
+      return;
     }
 
     const newRes: Reservation = {
-        id: Math.random().toString(36).substr(2, 9),
-        userEmail: targetUser.email,
-        classId: manualClassId,
-        timestamp: Date.now()
+      id: Math.random().toString(36).substr(2, 9),
+      userEmail: targetUser.email,
+      classId: manualClassId,
+      timestamp: Date.now()
     };
 
     setReservations([...reservations, newRes]);
@@ -163,15 +183,32 @@ const AdminDashboard: React.FC = () => {
     alert("Réservation ajoutée avec succès !");
   };
 
+  // --- ACTIONS PLANNING ---
+  const deleteClass = (id: string) => {
+    if (window.confirm("Supprimer ce cours du planning ? Cela n'affectera pas les réservations passées mais empêchera les nouvelles.")) {
+      setGymClasses(gymClasses.filter(c => c.id !== id));
+    }
+  };
+
+  const addClass = (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = `class-${Math.random().toString(36).substr(2, 9)}`;
+    const classToAdd = { ...newClass, id, capacity: Number(newClass.capacity) } as any;
+    setGymClasses([...gymClasses, classToAdd]);
+    setShowAddClass(false);
+    setNewClass({ name: '', type: 'Pump', day: 'Lundi', time: '08:00', capacity: 20 });
+    alert("Cours ajouté au planning !");
+  };
+
   // --- FILTRES ---
-  const filteredUsers = registeredUsers.filter(u => 
+  const filteredUsers = registeredUsers.filter(u =>
     u.email !== 'admin@gmail.com' && (
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) || 
+      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
       (u.name && u.name.toLowerCase().includes(userSearch.toLowerCase()))
     )
   );
 
-  const filteredReservations = reservations.filter(r => 
+  const filteredReservations = reservations.filter(r =>
     r.userEmail.toLowerCase().includes(resSearch.toLowerCase())
   ).sort((a, b) => b.timestamp - a.timestamp);
 
@@ -185,8 +222,8 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="py-16 px-4 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="mb-12">
-        <span className="text-yellow-500 font-bold uppercase tracking-[0.3em] text-[10px]">Console de Gestion — v2.0 (Mailing & Abonnements)</span>
-        <h1 className="text-5xl font-black text-white uppercase italic tracking-tighter mt-2 leading-none">Console de <span className="text-yellow-500">Gestion</span></h1>
+        <span className="text-yellow-500 font-bold uppercase tracking-[0.3em] text-[10px]">Espace Administrateur</span>
+        <h1 className="text-5xl font-black text-white uppercase italic tracking-tighter mt-2 leading-none">Console de Gestion</h1>
       </div>
 
       {/* Cartes Stats */}
@@ -194,11 +231,11 @@ const AdminDashboard: React.FC = () => {
         {stats.map((s, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl flex items-center justify-between">
             <div>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">{s.label}</p>
-                <p className="text-4xl font-black text-white italic">{s.value}</p>
+              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">{s.label}</p>
+              <p className="text-4xl font-black text-white italic">{s.value}</p>
             </div>
             <div className={`p-4 bg-zinc-950 rounded-2xl ${s.color}`}>
-                {s.icon}
+              {s.icon}
             </div>
           </div>
         ))}
@@ -206,21 +243,26 @@ const AdminDashboard: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex gap-3 mb-8">
-        <button 
+        <button
           onClick={() => setActiveTab('users')}
-          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-            activeTab === 'users' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-          }`}
+          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+            }`}
         >
           <span className="hidden sm:inline">Gestion </span>Membres
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('reservations')}
-          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-            activeTab === 'reservations' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-          }`}
+          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'reservations' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+            }`}
         >
           <span className="hidden sm:inline">Gestion </span>Réservations
+        </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'schedule' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+            }`}
+        >
+          <span className="hidden sm:inline">Gestion </span>Planning
         </button>
       </div>
 
@@ -229,8 +271,8 @@ const AdminDashboard: React.FC = () => {
         <div className="space-y-6">
           <div className="relative">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Rechercher un membre par nom ou email..."
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
@@ -257,25 +299,27 @@ const AdminDashboard: React.FC = () => {
                       <p className="text-zinc-500 text-xs">{u.email}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex flex-col gap-2">
-                        <input 
-                          type="date" 
-                          value={u.subscriptionEndDate || ''} 
+                      <div className="flex flex-col gap-2 min-w-[140px]">
+                        <input
+                          type="date"
+                          value={u.subscriptionEndDate || ''}
                           onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
-                          className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white focus:border-yellow-500 outline-none transition-all cursor-pointer"
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all cursor-pointer font-mono"
                         />
-                        
-                        {u.subscriptionEndDate && (
-                          <p className={`text-[9px] uppercase font-black px-1 ${new Date(u.subscriptionEndDate) < new Date() ? 'text-red-500' : 'text-zinc-500'}`}>
-                            {new Date(u.subscriptionEndDate) < new Date() ? '• Expiré' : '• Actif'}
-                          </p>
-                        )}
-                        
-                        {subStatusMsg?.email === u.email && (
-                          <p className={`text-[9px] font-bold ${subStatusMsg.type === 'success' ? 'text-green-500' : 'text-red-500'} animate-pulse`}>
-                            {subStatusMsg.text}
-                          </p>
-                        )}
+
+                        <div className="flex items-center justify-between px-1">
+                          {u.subscriptionEndDate && (
+                            <p className={`text-[9px] uppercase font-black ${new Date(u.subscriptionEndDate) < new Date() ? 'text-red-500' : 'text-zinc-500'}`}>
+                              {new Date(u.subscriptionEndDate) < new Date() ? '• Expiré' : '• Actif'}
+                            </p>
+                          )}
+
+                          {subStatusMsg?.email === u.email && (
+                            <p className={`text-[9px] font-bold ${subStatusMsg.type === 'success' ? 'text-green-500' : 'text-red-500'} animate-pulse`}>
+                              {subStatusMsg.text}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -286,47 +330,45 @@ const AdminDashboard: React.FC = () => {
                       )}
                     </td>
                     <td className="px-8 py-6 text-right space-x-2">
-                       {/* Section Abonnement Rapide */}
-                       <div className="inline-flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
-                        <button 
+                      {/* Section Abonnement Rapide */}
+                      <div className="inline-flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+                        <button
                           onClick={() => handleUpdateSubscription(u.email, 1)}
                           className="px-2 py-1 text-[8px] font-black text-zinc-400 hover:text-yellow-500 hover:bg-zinc-900 rounded transition-all"
                           title="+1 mois"
                         >+1m</button>
-                        <button 
+                        <button
                           onClick={() => handleUpdateSubscription(u.email, 2)}
                           className="px-2 py-1 text-[8px] font-black text-zinc-400 hover:text-yellow-500 hover:bg-zinc-900 rounded transition-all"
                           title="+2 mois"
                         >+2m</button>
-                        <button 
+                        <button
                           onClick={() => handleUpdateSubscription(u.email, 12)}
                           className="px-2 py-1 text-[8px] font-black text-zinc-400 hover:text-yellow-500 hover:bg-zinc-900 rounded transition-all"
                           title="+1 an"
                         >+1a</button>
                       </div>
 
-                      <button 
+                      <button
                         onClick={() => sendManualReminder(u.email)}
                         disabled={!u.subscriptionEndDate}
-                        className={`p-2 rounded-lg border transition-all ${
-                          u.subscriptionEndDate ? 'border-blue-500/30 text-blue-500 bg-blue-500/5 hover:bg-blue-500/20' : 'border-zinc-800 text-zinc-700 opacity-50 cursor-not-allowed'
-                        }`}
+                        className={`p-2 rounded-lg border transition-all ${u.subscriptionEndDate ? 'border-blue-500/30 text-blue-500 bg-blue-500/5 hover:bg-blue-500/20' : 'border-zinc-800 text-zinc-700 opacity-50 cursor-not-allowed'
+                          }`}
                         title="Envoyer rappel email"
                       >
                         <Mail size={16} />
                       </button>
 
-                      <button 
+                      <button
                         onClick={() => toggleBlockUser(u.email)}
-                        className={`p-2 rounded-lg border transition-all ${
-                          u.blocked ? 'border-green-500/30 text-green-500 bg-green-500/5 hover:bg-green-500/20' : 'border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20'
-                        }`}
+                        className={`p-2 rounded-lg border transition-all ${u.blocked ? 'border-green-500/30 text-green-500 bg-green-500/5 hover:bg-green-500/20' : 'border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20'
+                          }`}
                         title={u.blocked ? "Débloquer" : "Bloquer"}
                       >
                         {u.blocked ? <ShieldCheck size={16} /> : <Ban size={16} />}
                       </button>
-                      
-                      <button 
+
+                      <button
                         onClick={() => deleteUser(u.email)}
                         className="p-2 rounded-lg border border-zinc-700 text-zinc-500 bg-zinc-800 hover:border-red-500 hover:text-red-500 transition-all"
                         title="Supprimer définitivement"
@@ -339,7 +381,7 @@ const AdminDashboard: React.FC = () => {
                 {filteredUsers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-8 py-20 text-center text-zinc-500 italic uppercase text-xs tracking-widest">
-                        Aucun utilisateur trouvé
+                      Aucun utilisateur trouvé
                     </td>
                   </tr>
                 )}
@@ -362,15 +404,14 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-zinc-500 text-xs truncate">{u.email}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => toggleBlockUser(u.email)}
-                      className={`p-2 rounded-xl border transition-all ${
-                        u.blocked ? 'border-green-500/30 text-green-500 bg-green-500/5 hover:bg-green-500/20' : 'border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20'
-                      }`}
+                      className={`p-2 rounded-xl border transition-all ${u.blocked ? 'border-green-500/30 text-green-500 bg-green-500/5 hover:bg-green-500/20' : 'border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20'
+                        }`}
                     >
                       {u.blocked ? <ShieldCheck size={18} /> : <Ban size={18} />}
                     </button>
-                    <button 
+                    <button
                       onClick={() => deleteUser(u.email)}
                       className="p-2 rounded-xl border border-zinc-700 text-zinc-500 bg-zinc-800 hover:border-red-500 hover:text-red-500 transition-all"
                     >
@@ -381,45 +422,45 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Sub info Mobile */}
                 <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800">
-                   <div className="flex items-center justify-between mb-3 gap-2">
-                      <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest flex items-center gap-2">
-                        <History size={12} /> Expiration
-                      </span>
-                      <input 
-                        type="date" 
-                        value={u.subscriptionEndDate || ''} 
-                        onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
-                        className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white focus:border-yellow-500 outline-none"
-                      />
-                   </div>
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest flex items-center gap-2">
+                      <History size={12} /> Expiration
+                    </span>
+                    <input
+                      type="date"
+                      value={u.subscriptionEndDate || ''}
+                      onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white focus:border-yellow-500 outline-none"
+                    />
+                  </div>
 
-                   {subStatusMsg?.email === u.email && (
-                      <p className={`text-[10px] font-bold text-center mb-3 ${subStatusMsg.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
-                        {subStatusMsg.text}
-                      </p>
-                   )}
+                  {subStatusMsg?.email === u.email && (
+                    <p className={`text-[10px] font-bold text-center mb-3 ${subStatusMsg.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                      {subStatusMsg.text}
+                    </p>
+                  )}
 
-                   <div className="grid grid-cols-4 gap-2">
-                      <button 
-                        onClick={() => handleUpdateSubscription(u.email, 1)}
-                        className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
-                      >+1m</button>
-                      <button 
-                        onClick={() => handleUpdateSubscription(u.email, 2)}
-                        className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
-                      >+2m</button>
-                      <button 
-                        onClick={() => handleUpdateSubscription(u.email, 12)}
-                        className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
-                      >+1a</button>
-                      <button 
-                        onClick={() => sendManualReminder(u.email)}
-                        disabled={!u.subscriptionEndDate}
-                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 py-2 rounded font-black text-[9px] border border-blue-500/20 transition-colors disabled:opacity-30 disabled:grayscale"
-                      >
-                         MAIL
-                      </button>
-                   </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      onClick={() => handleUpdateSubscription(u.email, 1)}
+                      className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
+                    >+1m</button>
+                    <button
+                      onClick={() => handleUpdateSubscription(u.email, 2)}
+                      className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
+                    >+2m</button>
+                    <button
+                      onClick={() => handleUpdateSubscription(u.email, 12)}
+                      className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2 rounded font-black text-[9px] border border-zinc-800 transition-colors"
+                    >+1a</button>
+                    <button
+                      onClick={() => sendManualReminder(u.email)}
+                      disabled={!u.subscriptionEndDate}
+                      className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 py-2 rounded font-black text-[9px] border border-blue-500/20 transition-colors disabled:opacity-30 disabled:grayscale"
+                    >
+                      MAIL
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -433,15 +474,15 @@ const AdminDashboard: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-grow">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Rechercher par email utilisateur..."
                 value={resSearch}
                 onChange={(e) => setResSearch(e.target.value)}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-5 pl-14 pr-6 text-white focus:outline-none focus:border-yellow-500 transition-all font-medium"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowAddRes(!showAddRes)}
               className="bg-yellow-500 hover:bg-yellow-600 text-black px-8 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all"
             >
@@ -452,31 +493,31 @@ const AdminDashboard: React.FC = () => {
 
           {showAddRes && (
             <div className="bg-zinc-900 border border-yellow-500/30 p-8 rounded-3xl animate-in slide-in-from-top">
-                <h3 className="text-white font-black uppercase text-sm italic mb-6">Ajouter une réservation</h3>
-                <form onSubmit={addManualReservation} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <input 
-                        type="email" 
-                        required
-                        placeholder="Email du membre..."
-                        value={manualUserEmail}
-                        onChange={(e) => setManualUserEmail(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-800 rounded-xl py-4 px-5 text-white focus:border-yellow-500 outline-none"
-                    />
-                    <select 
-                        required
-                        value={manualClassId}
-                        onChange={(e) => setManualClassId(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-800 rounded-xl py-4 px-5 text-white focus:border-yellow-500 outline-none"
-                    >
-                        <option value="">Choisir un cours...</option>
-                        {GYM_SCHEDULE.map(c => (
-                            <option key={c.id} value={c.id}>{c.day} - {c.time} - {c.name}</option>
-                        ))}
-                    </select>
-                    <button type="submit" className="bg-white text-black font-black uppercase text-[10px] py-4 rounded-xl hover:bg-yellow-500 transition-colors">
-                        Valider Inscription
-                    </button>
-                </form>
+              <h3 className="text-white font-black uppercase text-sm italic mb-6">Ajouter une réservation</h3>
+              <form onSubmit={addManualReservation} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <input
+                  type="email"
+                  required
+                  placeholder="Email du membre..."
+                  value={manualUserEmail}
+                  onChange={(e) => setManualUserEmail(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl py-4 px-5 text-white focus:border-yellow-500 outline-none"
+                />
+                <select
+                  required
+                  value={manualClassId}
+                  onChange={(e) => setManualClassId(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-xl py-4 px-5 text-white focus:border-yellow-500 outline-none"
+                >
+                  <option value="">Choisir un cours...</option>
+                  {gymClasses.map(c => (
+                    <option key={c.id} value={c.id}>{c.day} - {c.time} - {c.name}</option>
+                  ))}
+                </select>
+                <button type="submit" className="bg-white text-black font-black uppercase text-[10px] py-4 rounded-xl hover:bg-yellow-500 transition-colors">
+                  Valider Inscription
+                </button>
+              </form>
             </div>
           )}
 
@@ -493,7 +534,7 @@ const AdminDashboard: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {filteredReservations.map((r) => {
-                  const gClass = GYM_SCHEDULE.find(c => c.id === r.classId);
+                  const gClass = gymClasses.find(c => c.id === r.classId);
                   return (
                     <tr key={r.id} className="hover:bg-zinc-800/50 transition-colors">
                       <td className="px-8 py-6">
@@ -507,7 +548,7 @@ const AdminDashboard: React.FC = () => {
                         {new Date(r.timestamp).toLocaleString('fr-FR')}
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <button 
+                        <button
                           onClick={() => cancelReservation(r.id)}
                           className="p-2 rounded-lg border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
                         >
@@ -520,7 +561,7 @@ const AdminDashboard: React.FC = () => {
                 {filteredReservations.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-8 py-20 text-center text-zinc-500 italic uppercase text-xs tracking-widest">
-                        Aucune réservation trouvée
+                      Aucune réservation trouvée
                     </td>
                   </tr>
                 )}
@@ -536,7 +577,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
             {filteredReservations.map((r) => {
-              const gClass = GYM_SCHEDULE.find(c => c.id === r.classId);
+              const gClass = gymClasses.find(c => c.id === r.classId);
               return (
                 <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
@@ -546,7 +587,7 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-zinc-600 text-[10px] mt-1">{new Date(r.timestamp).toLocaleString('fr-FR')}</p>
                   </div>
                   <div className="shrink-0">
-                    <button 
+                    <button
                       onClick={() => cancelReservation(r.id)}
                       className="p-3 rounded-xl border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
                     >
@@ -556,6 +597,154 @@ const AdminDashboard: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* CONTENU PLANNING */}
+      {activeTab === 'schedule' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-white font-black uppercase text-xl italic flex items-center gap-3">
+              Planning Hebdomadaire
+              <span className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
+            </h2>
+            <button
+              onClick={() => setShowAddClass(!showAddClass)}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-3 transition-all"
+            >
+              <PlusCircle size={20} />
+              Ajouter un Cours
+            </button>
+          </div>
+
+          {showAddClass && (
+            <div className="bg-zinc-900 border border-yellow-500/30 p-8 rounded-3xl animate-in slide-in-from-top">
+              <h3 className="text-white font-black uppercase text-sm italic mb-6">Nouveau Cours</h3>
+              <form onSubmit={addClass} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Nom du cours</label>
+                   <input
+                    type="text"
+                    required
+                    placeholder="ex: Body Pump Ultra"
+                    value={newClass.name}
+                    onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-yellow-500 outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Type</label>
+                  <select
+                    value={newClass.type}
+                    onChange={(e) => setNewClass({ ...newClass, type: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-yellow-500 outline-none"
+                  >
+                    <option value="Pump">Pump</option>
+                    <option value="HIT">HIT</option>
+                    <option value="Bodycombat">Bodycombat</option>
+                    <option value="Spinning">Spinning</option>
+                    <option value="100% Femmes">100% Femmes</option>
+                    <option value="Abdos">Abdos</option>
+                    <option value="Cross Training">Cross Training</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Jour</label>
+                  <select
+                    value={newClass.day}
+                    onChange={(e) => setNewClass({ ...newClass, day: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-yellow-500 outline-none"
+                  >
+                    <option value="Lundi">Lundi</option>
+                    <option value="Mardi">Mardi</option>
+                    <option value="Mercredi">Mercredi</option>
+                    <option value="Jeudi">Jeudi</option>
+                    <option value="Vendredi">Vendredi</option>
+                    <option value="Samedi">Samedi</option>
+                    <option value="Dimanche">Dimanche</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Heure</label>
+                  <input
+                    type="time"
+                    required
+                    value={newClass.time}
+                    onChange={(e) => setNewClass({ ...newClass, time: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-yellow-500 outline-none"
+                  />
+                </div>
+                <div className="space-y-2 lg:col-span-1">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Capacité</label>
+                   <div className="flex gap-2">
+                      <input
+                        type="number"
+                        required
+                        value={newClass.capacity}
+                        onChange={(e) => setNewClass({ ...newClass, capacity: Number(e.target.value) })}
+                        className="flex-grow bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-yellow-500 outline-none"
+                      />
+                      <button type="submit" className="bg-white text-black font-black uppercase text-[10px] px-6 rounded-xl hover:bg-yellow-500 transition-colors">
+                        OK
+                      </button>
+                   </div>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-zinc-950 border-b border-zinc-800">
+                  <tr>
+                    <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Cours</th>
+                    <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Type</th>
+                    <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Horaire</th>
+                    <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Capacité</th>
+                    <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {gymClasses.sort((a,b) => {
+                    const days = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+                    if (a.day !== b.day) return days.indexOf(a.day) - days.indexOf(b.day);
+                    return a.time.localeCompare(b.time);
+                  }).map((c) => (
+                    <tr key={c.id} className="hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-8 py-6">
+                        <p className="text-white font-black italic">{c.name}</p>
+                      </td>
+                      <td className="px-8 py-6">
+                         <span className="bg-zinc-800 text-zinc-400 px-3 py-1 rounded-full text-[9px] font-black uppercase border border-zinc-700">{c.type}</span>
+                      </td>
+                      <td className="px-8 py-6 text-yellow-500 font-bold text-xs">
+                        {c.day} @ {c.time}
+                      </td>
+                      <td className="px-8 py-6 text-zinc-500 text-xs font-mono">
+                        {c.capacity} pers.
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <button
+                          onClick={() => deleteClass(c.id)}
+                          className="p-2 rounded-lg border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {gymClasses.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-8 py-20 text-center text-zinc-500 italic uppercase text-xs tracking-widest">
+                        Le planning est vide
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
