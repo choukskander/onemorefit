@@ -318,6 +318,73 @@ app.post('/api/reservations/sync', async (req, res) => {
   }
 });
 
+// DELETE — Annuler une réservation
+app.delete('/api/reservations/:reservationId', async (req, res) => {
+  try {
+    const { reservationId } = req.params;
+    const { userEmail } = req.body;
+
+    // Trouver la réservation
+    const reservation = await Reservation.findOne({ id: reservationId });
+    if (!reservation) {
+      return res.status(404).json({ error: 'Réservation introuvable' });
+    }
+
+    // Vérifier que c'est bien l'utilisateur qui a fait la réservation
+    if (reservation.userEmail !== userEmail) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    // Récupérer la classe pour vérifier l'heure
+    const gymClass = await GymClass.findOne({ id: reservation.classId });
+    if (!gymClass) {
+      return res.status(404).json({ error: 'Cours introuvable' });
+    }
+
+    // Vérifier que le cours n'a pas commencé
+    const now = new Date();
+    const [hours, minutes] = gymClass.time.split(':').map(Number);
+    const classStart = new Date();
+    classStart.setHours(hours, minutes, 0, 0);
+
+    // Convert day name to check if it's today
+    const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const todayIndex = now.getDay();
+    const todayName = days[todayIndex];
+
+    // Si c'est aujourd'hui et le cours a déjà commencé, refuser l'annulation
+    if (gymClass.day === todayName && now >= classStart) {
+      return res.status(400).json({ error: 'Impossible d\'annuler : le cours a déjà commencé' });
+    }
+
+    // Supprimer la réservation
+    await Reservation.deleteOne({ id: reservationId });
+    console.log(`❌ Réservation annulée : ${reservationId}`);
+
+    // Vérifier et promouvoir quelqu'un de la waitlist si elle existe
+    const firstWaitlist = await Waitlist.findOne({ classId: reservation.classId });
+    if (firstWaitlist) {
+      // Supprimer de la waitlist
+      await Waitlist.deleteOne({ _id: firstWaitlist._id });
+      
+      // Créer une nouvelle réservation pour cette personne
+      const newReservation = new Reservation({
+        id: Math.random().toString(36).substr(2, 9),
+        userEmail: firstWaitlist.userEmail,
+        classId: reservation.classId,
+        timestamp: Date.now()
+      });
+      await newReservation.save();
+      console.log(`✅ Membre de la waitlist promu : ${firstWaitlist.userEmail}`);
+    }
+
+    res.json({ message: 'Réservation annulée avec succès' });
+  } catch (err) {
+    console.error('❌ Erreur annulation:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- WAITLIST ---
 app.get('/api/waitlist', async (req, res) => {
   try {
