@@ -204,13 +204,21 @@ const Contact: React.FC = () => {
             <div className="rounded-3xl overflow-hidden border border-zinc-800 h-80 shadow-2xl relative">
               <iframe
                 title="Gym Location"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3230.123456789!2d10.123456!3d36.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sOne%20more%20fitness%2C%20MH5Q%2BJ4M%2C%20B%C3%A9ni%20Khalled!5e0!3m2!1sen!2stn!4v1234567890!5m2!1sen!2stn"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3230.123456789!2d10.5833!3d36.6833!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1302b5c8b8b8b8b8b:0x1234567890abcdef!2sOne%20more%20fitness%2C%20MH5Q%2BJ4M%2C%20B%C3%A9ni%20Khalled!5e0!3m2!1sen!2stn!4v1234567890!5m2!1sen!2stn"
                 width="100%"
                 height="100%"
                 style={{ border: 0, filter: 'grayscale(1) invert(0.9)' }}
                 allowFullScreen={true}
                 loading="lazy"
               ></iframe>
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=MH5Q%2BJ4M%20B%C3%A9ni%20Khalled%20Tunisia"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-4 right-4 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg transition-colors shadow-lg"
+              >
+                Ouvrir dans Google Maps
+              </a>
             </div>
           </div>
         </div>
