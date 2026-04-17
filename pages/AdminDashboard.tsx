@@ -1,4 +1,4 @@
-
+ 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
@@ -14,10 +14,11 @@ const AdminDashboard: React.FC = () => {
     user, registeredUsers, setRegisteredUsers,
     reservations, setReservations,
     waitlist, setWaitlist,
-    gymClasses, setGymClasses
+    gymClasses, setGymClasses,
+    contacts, setContacts
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'reservations' | 'schedule'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'reservations' | 'schedule' | 'contacts'>('users');
   const [userSearch, setUserSearch] = useState('');
   const [resSearch, setResSearch] = useState('');
 
@@ -263,6 +264,13 @@ const AdminDashboard: React.FC = () => {
             }`}
         >
           <span className="hidden sm:inline">Gestion </span>Planning
+        </button>
+        <button
+          onClick={() => setActiveTab('contacts')}
+          className={`flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'contacts' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+            }`}
+        >
+          <span className="hidden sm:inline">Gestion </span>Contacts
         </button>
       </div>
 
@@ -745,6 +753,63 @@ const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTENU CONTACTS */}
+      {activeTab === 'contacts' && (
+        <div className="space-y-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+            <table className="w-full text-left">
+              <thead className="bg-zinc-950 border-b border-zinc-800">
+                <tr>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Nom</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Email</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Sujet</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Message</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest">Date</th>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase text-zinc-400 tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {contacts.filter(c => c.email && c.email.trim() !== '').map((c) => (
+                  <tr key={c.id} className="hover:bg-zinc-800/50 transition-colors">
+                    <td className="px-8 py-6">
+                      <p className="text-white font-black italic">{c.name}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-blue-400 text-sm underline">{c.email}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-yellow-500 font-bold text-[10px]">{c.subject}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-zinc-400 text-xs max-w-xs truncate">{c.message}</p>
+                    </td>
+                    <td className="px-8 py-6 text-zinc-500 text-xs">
+                      {new Date(c.createdAt).toLocaleString('fr-FR')}
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <button
+                        onClick={() => setContacts(contacts.filter(contact => contact.id !== c.id))}
+                        className="p-2 rounded-lg border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {contacts.filter(c => c.email).length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-20 text-center text-zinc-500 italic uppercase text-xs tracking-widest">
+                      Aucune demande de contact avec email valide
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

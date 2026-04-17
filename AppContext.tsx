@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { TRANSLATIONS, GYM_SCHEDULE } from './constants';
-import { Language, User, Reservation, WaitlistEntry, GymClass } from './types';
+import { Language, User, Reservation, WaitlistEntry, GymClass, Contact } from './types';
 
 interface AppContextType {
   language: Language;
@@ -17,6 +17,9 @@ interface AppContextType {
   setWaitlist: (waitlist: WaitlistEntry[]) => void;
   gymClasses: GymClass[];
   setGymClasses: (classes: GymClass[]) => void;
+  contacts: Contact[];
+  setContacts: (contacts: Contact[]) => void;
+  refreshContacts: () => Promise<void>;
   isInitialLoaded: boolean;
 }
 
@@ -31,17 +34,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [gymClasses, setGymClasses] = useState<GymClass[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [isInitialLoaded, setIsInitialLoaded] = useState(false);
 
   // INITIAL DATA FETCHING
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersResp, resResp, waitResp, classesResp] = await Promise.all([
+        const [usersResp, resResp, waitResp, classesResp, contactsResp] = await Promise.all([
           fetch(`${API_URL}/api/users`),
           fetch(`${API_URL}/api/reservations`),
           fetch(`${API_URL}/api/waitlist`),
-          fetch(`${API_URL}/api/classes`)
+          fetch(`${API_URL}/api/classes`),
+          fetch(`${API_URL}/api/contacts`)
         ]);
 
         if (usersResp.ok) setRegisteredUsers(await usersResp.json());
@@ -57,6 +62,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         } else {
             setGymClasses(GYM_SCHEDULE);
         }
+        if (contactsResp.ok) setContacts(await contactsResp.json());
       } catch (error) {
         console.error('Error fetching data:', error);
         setGymClasses(GYM_SCHEDULE);
@@ -113,6 +119,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return section[key as keyof typeof section] || key;
   };
 
+  const refreshContacts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/contacts`);
+      if (response.ok) {
+        const data = await response.json();
+        setContacts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+    }
+  };
+
   return (
     <AppContext.Provider value={{ 
       language, setLanguage, t, user, setUser, 
@@ -120,6 +138,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       reservations, setReservations,
       waitlist, setWaitlist,
       gymClasses, setGymClasses,
+      contacts, setContacts,
+      refreshContacts,
       isInitialLoaded
     }}>
       {children}

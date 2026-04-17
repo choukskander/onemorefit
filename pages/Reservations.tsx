@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { DAYS_FR_TO_EN } from '../constants';
-import { CheckCircle2, AlertCircle, Users, Clock, Loader2, Calendar, ShieldX } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Users, Clock, Loader2, Calendar, ShieldX, X, Trash2 } from 'lucide-react';
 import { GymClass, User } from '../types';
 
 const Reservations: React.FC = () => {
@@ -91,6 +91,54 @@ const Reservations: React.FC = () => {
 
   const isAlreadyReserved = (classId: string) => {
     return user && reservations.some(r => r.classId === classId && r.userEmail === user.email);
+  };
+
+  const handleCancelReservation = (reservationId: string, classId: string) => {
+    if (!user) return;
+    
+    const confirmation = window.confirm('Êtes-vous sûr de vouloir annuler cette réservation ?');
+    if (!confirmation) return;
+
+    setIsSubmitting(true);
+    
+    setTimeout(() => {
+      try {
+        // Trouver et supprimer la réservation
+        const reservation = reservations.find(r => r.id === reservationId);
+        if (reservation) {
+          setReservations(reservations.filter(r => r.id !== reservationId));
+          
+          // Si quelqu'un est en attente, le promouvoir
+          const waitlistEntry = waitlist.find(w => w.classId === classId);
+          if (waitlistEntry) {
+            setWaitlist(waitlist.filter(w => w._id !== waitlistEntry._id));
+            const newReservation = {
+              id: Math.random().toString(36).substr(2, 9),
+              userEmail: waitlistEntry.userEmail,
+              classId: classId,
+              timestamp: Date.now()
+            };
+            setReservations([...reservations.filter(r => r.id !== reservationId), newReservation]);
+            setMessage({ 
+              type: 'success', 
+              text: 'Réservation annulée. Un membre en attente a été promu !' 
+            });
+          } else {
+            setMessage({ 
+              type: 'success', 
+              text: 'Réservation annulée avec succès.' 
+            });
+          }
+        }
+      } catch (error) {
+        setMessage({ 
+          type: 'error', 
+          text: 'Erreur lors de l\'annulation.' 
+        });
+      }
+      setIsSubmitting(false);
+      setTimeout(() => setMessage(null), 5000);
+    }, 500);
   };
 
   // Retourne l'état temporel d'un cours : 'available' | 'in_progress' | 'past'
@@ -404,6 +452,63 @@ const Reservations: React.FC = () => {
                     Se déconnecter
                 </button>
             </div>
+
+            {/* Section Mes Réservations Actives */}
+            {reservations.filter(r => r.userEmail === user.email).length > 0 && (
+              <div className="bg-zinc-900 p-8 rounded-3xl border border-yellow-500/30">
+                <h3 className="text-yellow-500 font-black uppercase text-lg italic mb-6 flex items-center gap-2">
+                  <CheckCircle2 size={18} /> Mes réservations
+                </h3>
+                <div className="space-y-4">
+                  {reservations
+                    .filter(r => r.userEmail === user.email)
+                    .map((reservation) => {
+                      const gymClass = gymClasses.find(c => c.id === reservation.classId);
+                      const classStatus = gymClass ? getClassStatus(gymClass.day, gymClass.time) : 'past';
+                      const canCancel = classStatus === 'available';
+
+                      return (
+                        <div 
+                          key={reservation.id} 
+                          className={`p-4 rounded-xl border transition-all ${
+                            canCancel 
+                              ? 'bg-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/50' 
+                              : 'bg-zinc-950 border-zinc-700'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-white font-bold text-sm truncate">{gymClass?.name || 'Cours'}</h4>
+                              <p className="text-zinc-500 text-xs mt-1">
+                                {gymClass?.day} à {gymClass?.time}
+                              </p>
+                              {!canCancel && (
+                                <p className="text-zinc-600 text-xs mt-2">
+                                  {classStatus === 'in_progress' ? 'Cours en cours' : 'Cours passé'}
+                                </p>
+                              )}
+                            </div>
+                            {canCancel && (
+                              <button
+                                onClick={() => handleCancelReservation(reservation.id, reservation.classId)}
+                                disabled={isSubmitting}
+                                className="flex-shrink-0 p-2 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-all disabled:opacity-50"
+                                title="Annuler cette réservation"
+                              >
+                                {isSubmitting ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                  <Trash2 size={16} />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>
