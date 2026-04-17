@@ -188,8 +188,8 @@ const Footer = () => {
             <Logo />
             <p className="text-zinc-400 text-sm mt-6 leading-relaxed">{t('hero_subtitle')}</p>
             <div className="flex space-x-4 mt-8">
-              <a href="#" className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-yellow-500 border border-zinc-800 hover:border-yellow-500 transition-all"><Facebook size={18} /></a>
-              <a href="#" className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-yellow-500 border border-zinc-800 hover:border-yellow-500 transition-all"><Instagram size={18} /></a>
+              <a href="https://www.facebook.com/onemorefitnessplus" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-yellow-500 border border-zinc-800 hover:border-yellow-500 transition-all"><Facebook size={18} /></a>
+              <a href="https://www.instagram.com/one_more_fit/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-yellow-500 border border-zinc-800 hover:border-yellow-500 transition-all"><Instagram size={18} /></a>
               <a href="#" className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-yellow-500 border border-zinc-800 hover:border-yellow-500 transition-all"><Twitter size={18} /></a>
             </div>
           </div>
