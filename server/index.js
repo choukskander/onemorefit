@@ -35,8 +35,9 @@ app.use(express.json());
 // MongoDB Connection
 // ------------------------------------------------------------------
 mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+  maxPoolSize: 10, // Limite le pool de connexions pour le free tier
+  serverSelectionTimeoutMS: 5000, // Timeout pour la sélection du serveur
+  socketTimeoutMS: 45000, // Timeout des sockets
 }).then(() => {
   console.log('✅ Connected to MongoDB');
 }).catch((err) => {
@@ -61,11 +62,6 @@ const reservationSchema = new mongoose.Schema({
   timestamp: { type: Number, required: true }
 }, { timestamps: true });
 
-const waitlistSchema = new mongoose.Schema({
-  userEmail: { type: String, required: true },
-  classId: { type: String, required: true }
-}, { timestamps: true });
-
 const gymClassSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -84,7 +80,6 @@ const contactSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const Reservation = mongoose.model('Reservation', reservationSchema);
-const Waitlist = mongoose.model('Waitlist', waitlistSchema);
 const GymClass = mongoose.model('GymClass', gymClassSchema);
 const Contact = mongoose.model('Contact', contactSchema);
 
@@ -218,7 +213,38 @@ cron.schedule('0 8 * * *', async () => {
   timezone: 'Africa/Tunis'
 });
 
+// ------------------------------------------------------------------
+// Cron Job — Nettoyage mensuel des anciennes données (1er du mois à 02:00)
+// ------------------------------------------------------------------
+cron.schedule('0 2 1 * *', async () => {
+  console.log('🧹 [CRON] Nettoyage des anciennes données...');
+
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+  try {
+    // Supprimer les contacts de plus d'un an
+    const deletedContacts = await Contact.deleteMany({ createdAt: { $lt: oneYearAgo } });
+    console.log(`🗑️ ${deletedContacts.deletedCount} anciens contacts supprimés`);
+
+    // Supprimer les réservations passées de plus d'un mois
+    const deletedReservations = await Reservation.deleteMany({
+      timestamp: { $lt: Math.floor(oneMonthAgo.getTime() / 1000) }
+    });
+    console.log(`🗑️ ${deletedReservations.deletedCount} anciennes réservations supprimées`);
+
+  } catch (err) {
+    console.error('❌ Erreur nettoyage:', err.message);
+  }
+}, {
+  timezone: 'Africa/Tunis'
+});
+
 console.log('⏰ Cron job planifié : vérification quotidienne à 08h00 (heure de Tunis)');
+console.log('⏰ Cron job de nettoyage planifié : mensuel le 1er à 02h00 (heure de Tunis)');
 
 // ------------------------------------------------------------------
 // API Routes
@@ -369,52 +395,9 @@ app.delete('/api/reservations/:reservationId', async (req, res) => {
     await Reservation.deleteOne({ id: reservationId });
     console.log(`❌ Réservation annulée : ${reservationId}`);
 
-    // Vérifier et promouvoir quelqu'un de la waitlist si elle existe
-    const firstWaitlist = await Waitlist.findOne({ classId: reservation.classId });
-    if (firstWaitlist) {
-      // Supprimer de la waitlist
-      await Waitlist.deleteOne({ _id: firstWaitlist._id });
-      
-      // Créer une nouvelle réservation pour cette personne
-      const newReservation = new Reservation({
-        id: Math.random().toString(36).substr(2, 9),
-        userEmail: firstWaitlist.userEmail,
-        classId: reservation.classId,
-        timestamp: Date.now()
-      });
-      await newReservation.save();
-      console.log(`✅ Membre de la waitlist promu : ${firstWaitlist.userEmail}`);
-    }
-
     res.json({ message: 'Réservation annulée avec succès' });
   } catch (err) {
     console.error('❌ Erreur annulation:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// --- WAITLIST ---
-app.get('/api/waitlist', async (req, res) => {
-  try {
-    const waitlists = await Waitlist.find();
-    res.json(waitlists.map(w => ({ userEmail: w.userEmail, classId: w.classId })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/waitlist/sync', async (req, res) => {
-  try {
-    const waitlists = req.body;
-    console.log(`🔄 Syncing ${waitlists.length} waitlist entries...`);
-    await Waitlist.deleteMany({});
-    if (waitlists.length > 0) {
-      await Waitlist.insertMany(waitlists);
-    }
-    console.log(`✅ Waitlist synchronized`);
-    res.json({ message: 'Waitlist synchronized' });
-  } catch (err) {
-    console.error('❌ Sync error waitlist:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

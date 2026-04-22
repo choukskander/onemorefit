@@ -655,6 +655,8 @@ const AdminDashboard: React.FC = () => {
                     <option value="100% Femmes">100% Femmes</option>
                     <option value="Abdos">Abdos</option>
                     <option value="Cross Training">Cross Training</option>
+                    <option value="TRX">TRX</option>
+                    <option value="Body Balance">Body Balance</option>
                   </select>
                 </div>
                 <div className="space-y-2">

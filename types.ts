@@ -8,7 +8,9 @@ export enum ClassType {
   Spinning = 'Spinning',
   Femmes100 = '100% Femmes',
   Abdos = 'Abdos',
-  CrossTraining = 'Cross Training'
+  CrossTraining = 'Cross Training',
+  TRX = 'TRX',
+  BodyBalance = 'Body Balance'
 }
 
 export interface GymClass {

@@ -9,6 +9,8 @@ export const CLASS_CAPACITIES: Record<ClassType, number> = {
   [ClassType.Femmes100]: 25,
   [ClassType.Abdos]: 25,
   [ClassType.CrossTraining]: 25,
+  [ClassType.TRX]: 15,
+  [ClassType.BodyBalance]: 20,
 };
 
 export const RAW_SCHEDULE: Omit<GymClass, 'id' | 'capacity'>[] = [
