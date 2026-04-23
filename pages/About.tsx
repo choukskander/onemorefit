@@ -7,11 +7,11 @@ const About: React.FC = () => {
   const { t } = useApp();
 
   const trainers = [
-    { name: "Amal Boughdiri", role: "Sports Education teacher & Fitness", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774709356/569763260_18331042066232304_7344315289381317254_n._qft45u.jpg", bio: "rpm et spining et cross training" },
+    { name: "Amal Boughdiri", role: "Sports Education teacher & Fitness", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774709356/569763260_18331042066232304_7344315289381317254_n._qft45u.jpg", bio: "rpm et spining, Abdos et cross training" },
     { name: "Dali Aniba", role: "Fitness Coach", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774709486/503712205_18486622198067241_4670692557767664809_n._mqgdx3.jpg", bio: "Certified Lesmils 🏅💪🏻🏋️ Personal trainer 📒 Football player bodycombat coach" },
     { name: "khaled akida", role: "Fitness Coach", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774709664/642504485_18179276815374589_282040092270797325_n._jnmyjv.jpg", bio: "bodycombat coach, bodyattack et pump" },
-    { name: "Mustfa Raî", role: "Physical Education Teacher 📚", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774710928/Capture_d_%C3%A9cran_2026-03-28_161506_bllrki.png", bio: "Professional Football Coach ⚽️, spinning et circuit" },
-    { name: 'Med. amine "Med JC"', role: "Personal trainer", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774870353/643593867_18572663719013579_5860835218634155598_n._qdai5b.webp", bio: "Expert en coaching personnel et transformation physique." },
+    { name: "Mustfa Raî", role: "Physical Education Teacher 📚", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774710928/Capture_d_%C3%A9cran_2026-03-28_161506_bllrki.png", bio: "Professional Football Coach ⚽️, spinning, TRX, Abdos et circuit" },
+    { name: 'Med. amine "Med JC"', role: "Personal trainer", img: "https://res.cloudinary.com/dftgawfdc/image/upload/v1774870353/643593867_18572663719013579_5860835218634155598_n._qdai5b.webp", bio: "Expert en coaching personnel et transformation physique, TRX et Abdos." },
   ];
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -88,7 +88,7 @@ const About: React.FC = () => {
               {trainers.map((trainer, i) => (
                 <div key={i} className="min-w-[280px] sm:min-w-[320px] snap-center">
                   <div className="group overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 h-full">
-                    <div className="aspect-[3/4] overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
+                    <div className="aspect-[3/4] overflow-hidden md:grayscale md:group-hover:grayscale-0 transition-all duration-500">
                       <img src={trainer.img} alt={trainer.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-6">

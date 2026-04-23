@@ -336,6 +336,7 @@ const AdminDashboard: React.FC = () => {
                           type="date"
                           value={u.subscriptionEndDate || ''}
                           onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
+                          style={{ colorScheme: 'dark' }}
                           className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition-all cursor-pointer font-mono"
                         />
 
@@ -462,6 +463,7 @@ const AdminDashboard: React.FC = () => {
                       type="date"
                       value={u.subscriptionEndDate || ''}
                       onChange={(e) => handleSetSpecificDate(u.email, e.target.value)}
+                      style={{ colorScheme: 'dark' }}
                       className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white focus:border-yellow-500 outline-none"
                     />
                   </div>
