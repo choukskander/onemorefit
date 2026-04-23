@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { GYM_SCHEDULE } from '../constants';
-import { Users, BookOpen, Ban, Trash2, ShieldCheck, Search, PlusCircle, CheckCircle, Clock } from 'lucide-react';
+import { Users, BookOpen, Ban, Trash2, ShieldCheck, Search, PlusCircle, CheckCircle } from 'lucide-react';
 import { Reservation, User } from '../types';
 import { Mail, CalendarPlus, Send, History } from 'lucide-react';
 
@@ -13,7 +13,6 @@ const AdminDashboard: React.FC = () => {
   const {
     user, registeredUsers, setRegisteredUsers,
     reservations, setReservations,
-    waitlist, setWaitlist,
     gymClasses, setGymClasses,
     contacts, setContacts
   } = useApp();
@@ -217,7 +216,6 @@ const AdminDashboard: React.FC = () => {
   const stats = [
     { label: "Membres", value: registeredUsers.length - 1, icon: <Users size={20} />, color: "text-blue-500" },
     { label: "Réservations", value: reservations.length, icon: <BookOpen size={20} />, color: "text-yellow-500" },
-    { label: "En attente", value: waitlist.length, icon: <Clock size={20} />, color: "text-purple-500" },
   ];
 
   return (

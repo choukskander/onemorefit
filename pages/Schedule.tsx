@@ -61,7 +61,7 @@ const Schedule: React.FC = () => {
                             <span>{filled}/{item.capacity}</span>
                           </div>
                           {isFull ? (
-                            <span className="text-zinc-700 font-black text-[8px] uppercase tracking-tighter italic">WAITLIST</span>
+                            <span className="text-red-500/70 font-black text-[8px] uppercase tracking-tighter italic">COMPLET</span>
                           ) : (
                             <span className="text-yellow-500 font-black text-[8px] uppercase tracking-tighter italic">JOIN</span>
                           )}

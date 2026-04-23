@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { TRANSLATIONS, GYM_SCHEDULE } from './constants';
-import { Language, User, Reservation, WaitlistEntry, GymClass, Contact } from './types';
+import { Language, User, Reservation, GymClass, Contact } from './types';
 
 interface AppContextType {
   language: Language;
@@ -13,8 +13,7 @@ interface AppContextType {
   setRegisteredUsers: (users: User[]) => void;
   reservations: Reservation[];
   setReservations: (reservations: Reservation[]) => void;
-  waitlist: WaitlistEntry[];
-  setWaitlist: (waitlist: WaitlistEntry[]) => void;
+
   gymClasses: GymClass[];
   setGymClasses: (classes: GymClass[]) => void;
   contacts: Contact[];
@@ -32,7 +31,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [user, setUser] = useState<User | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+
   const [gymClasses, setGymClasses] = useState<GymClass[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isInitialLoaded, setIsInitialLoaded] = useState(false);
@@ -41,17 +40,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersResp, resResp, waitResp, classesResp, contactsResp] = await Promise.all([
+        const [usersResp, resResp, classesResp, contactsResp] = await Promise.all([
           fetch(`${API_URL}/api/users`),
           fetch(`${API_URL}/api/reservations`),
-          fetch(`${API_URL}/api/waitlist`),
           fetch(`${API_URL}/api/classes`),
           fetch(`${API_URL}/api/contacts`)
         ]);
 
         if (usersResp.ok) setRegisteredUsers(await usersResp.json());
         if (resResp.ok) setReservations(await resResp.json());
-        if (waitResp.ok) setWaitlist(await waitResp.json());
         if (classesResp.ok) {
           const data = await classesResp.json();
           if (data.length === 0) {
@@ -94,15 +91,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [reservations, isInitialLoaded]);
 
-  useEffect(() => {
-    if (isInitialLoaded) {
-      fetch(`${API_URL}/api/waitlist/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(waitlist)
-      }).catch(err => console.error("Sync error waitlist:", err));
-    }
-  }, [waitlist, isInitialLoaded]);
+
 
   useEffect(() => {
     if (isInitialLoaded && gymClasses.length > 0) {
@@ -136,7 +125,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       language, setLanguage, t, user, setUser, 
       registeredUsers, setRegisteredUsers,
       reservations, setReservations,
-      waitlist, setWaitlist,
       gymClasses, setGymClasses,
       contacts, setContacts,
       refreshContacts,

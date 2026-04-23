@@ -37,10 +37,7 @@ export interface Reservation {
   timestamp: number;
 }
 
-export interface WaitlistEntry {
-  userEmail: string;
-  classId: string;
-}
+
 
 export interface Contact {
   id: string;

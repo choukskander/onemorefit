@@ -10,7 +10,6 @@ const Reservations: React.FC = () => {
     t, user, setUser, 
     registeredUsers, setRegisteredUsers, 
     reservations, setReservations, 
-    waitlist, setWaitlist, 
     gymClasses, language 
   } = useApp();
 
@@ -93,7 +92,7 @@ const Reservations: React.FC = () => {
     return user && reservations.some(r => r.classId === classId && r.userEmail === user.email);
   };
 
-  const handleCancelReservation = (reservationId: string, classId: string) => {
+  const handleCancelReservation = (reservationId: string, _classId: string) => {
     if (!user) return;
     
     const confirmation = window.confirm('Êtes-vous sûr de vouloir annuler cette réservation ?');
@@ -103,32 +102,13 @@ const Reservations: React.FC = () => {
     
     setTimeout(() => {
       try {
-        // Trouver et supprimer la réservation
         const reservation = reservations.find(r => r.id === reservationId);
         if (reservation) {
           setReservations(reservations.filter(r => r.id !== reservationId));
-          
-          // Si quelqu'un est en attente, le promouvoir
-          const waitlistEntry = waitlist.find(w => w.classId === classId);
-          if (waitlistEntry) {
-            setWaitlist(waitlist.filter(w => w._id !== waitlistEntry._id));
-            const newReservation = {
-              id: Math.random().toString(36).substr(2, 9),
-              userEmail: waitlistEntry.userEmail,
-              classId: classId,
-              timestamp: Date.now()
-            };
-            setReservations([...reservations.filter(r => r.id !== reservationId), newReservation]);
-            setMessage({ 
-              type: 'success', 
-              text: 'Réservation annulée. Un membre en attente a été promu !' 
-            });
-          } else {
-            setMessage({ 
-              type: 'success', 
-              text: 'Réservation annulée avec succès.' 
-            });
-          }
+          setMessage({ 
+            type: 'success', 
+            text: 'Réservation annulée avec succès.' 
+          });
         }
       } catch (error) {
         setMessage({ 
@@ -186,8 +166,7 @@ const Reservations: React.FC = () => {
       }
 
       if (filled >= gymClass.capacity) {
-        setWaitlist([...waitlist, { userEmail: user.email, classId: gymClass.id }]);
-        setMessage({ type: 'success', text: t('waitlist_success') });
+        setMessage({ type: 'error', text: 'Ce cours est complet. Veuillez choisir un autre cours.' });
       } else {
         const newReservation = {
           id: Math.random().toString(36).substr(2, 9),
@@ -402,17 +381,17 @@ const Reservations: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => handleBook(item)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isFull}
                         className={`w-full sm:w-auto px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
                           isFull 
-                            ? 'bg-zinc-800 text-zinc-500 border border-zinc-700' 
+                            ? 'bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed' 
                             : 'bg-white text-black hover:bg-yellow-500 shadow-xl'
                         } disabled:opacity-50`}
                       >
                         {isSubmitting ? (
                           <Loader2 className="animate-spin" size={20} />
                         ) : (
-                          isFull ? t('join_waitlist') : t('reserve_now')
+                          isFull ? t('class_full') : t('reserve_now')
                         )}
                       </button>
                     )}
@@ -439,10 +418,6 @@ const Reservations: React.FC = () => {
                     <div className="flex justify-between items-center py-4 border-b border-zinc-800 text-sm">
                         <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Mes Réservations</span>
                         <span className="text-white font-black italic">{reservations.filter(r => r.userEmail === user.email).length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-4 border-b border-zinc-800 text-sm">
-                        <span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">En attente</span>
-                        <span className="text-white font-black italic">{waitlist.filter(w => w.userEmail === user.email).length}</span>
                     </div>
                 </div>
                 <button 
