@@ -786,7 +786,8 @@ const AdminDashboard: React.FC = () => {
       {/* CONTENU CONTACTS */}
       {activeTab === 'contacts' && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
             <table className="w-full text-left">
               <thead className="bg-zinc-950 border-b border-zinc-800">
                 <tr>
@@ -836,6 +837,43 @@ const AdminDashboard: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-4">
+            {contacts.filter(c => c.email && c.email.trim() !== '').map((c) => (
+              <div key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl">
+                <div className="flex justify-between items-start gap-4 mb-4">
+                  <div className="min-w-0">
+                    <p className="text-white font-black italic text-lg truncate">{c.name}</p>
+                    <a href={`mailto:${c.email}`} className="text-blue-400 text-xs underline truncate block mt-1">{c.email}</a>
+                  </div>
+                  <button
+                    onClick={() => deleteContact(c.id)}
+                    className="flex-shrink-0 p-3 rounded-xl border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
+                    title="Supprimer"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                
+                <div className="bg-zinc-950 rounded-2xl p-4 border border-zinc-800/50 mb-4">
+                  <p className="text-yellow-500 font-black text-[10px] uppercase tracking-widest mb-2">{c.subject}</p>
+                  <p className="text-zinc-400 text-sm leading-relaxed">{c.message}</p>
+                </div>
+
+                <div className="flex justify-between items-center text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
+                  <span>Reçu le</span>
+                  <span>{new Date(c.createdAt).toLocaleString('fr-FR')}</span>
+                </div>
+              </div>
+            ))}
+            
+            {contacts.filter(c => c.email && c.email.trim() !== '').length === 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 text-center text-zinc-500 italic uppercase text-xs tracking-widest">
+                Aucune demande de contact
+              </div>
+            )}
           </div>
         </div>
       )}
