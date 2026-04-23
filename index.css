@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+h1,
+h2,
+h3,
+.brand-font {
+  font-family: 'Oswald', sans-serif;
+}
