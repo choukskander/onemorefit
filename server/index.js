@@ -481,6 +481,23 @@ app.post('/api/contacts', async (req, res) => {
   }
 });
 
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedContact = await Contact.findByIdAndDelete(id);
+    
+    if (!deletedContact) {
+      return res.status(404).json({ error: 'Contact introuvable' });
+    }
+    
+    console.log(`🗑️ Contact supprimé : ${id}`);
+    res.json({ message: 'Contact supprimé avec succès' });
+  } catch (err) {
+    console.error('❌ Erreur suppression contact:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start Server
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

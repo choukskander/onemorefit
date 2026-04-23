@@ -14,7 +14,8 @@ const AdminDashboard: React.FC = () => {
     user, registeredUsers, setRegisteredUsers,
     reservations, setReservations,
     gymClasses, setGymClasses,
-    contacts, setContacts
+    contacts, setContacts,
+    refreshContacts
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'users' | 'reservations' | 'schedule' | 'contacts'>('users');
@@ -43,11 +44,18 @@ const AdminDashboard: React.FC = () => {
 
   // --- VÉRIFICATION DE SÉCURITÉ & REDIRECTION ---
   useEffect(() => {
-    // Si l'utilisateur se déconnecte, on le renvoie à l'accueil sans alerte
+  // Si l'utilisateur se déconnecte, on le renvoie à l'accueil sans alerte
     if (!user) {
       navigate('/');
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'contacts') {
+      refreshContacts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Si pas admin, on affiche le message d'accès refusé (cas de lien direct sans être admin)
   if (!user || user.email !== 'admin@gmail.com') {
@@ -198,6 +206,24 @@ const AdminDashboard: React.FC = () => {
     setShowAddClass(false);
     setNewClass({ name: '', type: 'Pump', day: 'Lundi', time: '08:00', capacity: 20 });
     alert("Cours ajouté au planning !");
+  };
+
+  // --- ACTIONS CONTACTS ---
+  const deleteContact = async (id: string) => {
+    if (window.confirm("Supprimer ce message de contact ?")) {
+      try {
+        const resp = await fetch(`${API_URL}/api/contacts/${id}`, {
+          method: 'DELETE'
+        });
+        if (resp.ok) {
+          setContacts(contacts.filter(contact => contact.id !== id));
+        } else {
+          alert("Erreur lors de la suppression du contact.");
+        }
+      } catch (err) {
+        console.error("Erreur suppression:", err);
+      }
+    }
   };
 
   // --- FILTRES ---
@@ -792,7 +818,7 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td className="px-8 py-6 text-right">
                       <button
-                        onClick={() => setContacts(contacts.filter(contact => contact.id !== c.id))}
+                        onClick={() => deleteContact(c.id)}
                         className="p-2 rounded-lg border border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/20 transition-all"
                         title="Supprimer"
                       >
