@@ -10,7 +10,8 @@ const Reservations: React.FC = () => {
     t, user, setUser, 
     registeredUsers, setRegisteredUsers, 
     reservations, setReservations, 
-    gymClasses, language 
+    gymClasses, language,
+    isInitialLoaded
   } = useApp();
 
   const getTodayInFrench = () => {
@@ -245,11 +246,16 @@ const Reservations: React.FC = () => {
             </div>
             <button 
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/10 flex justify-center items-center"
+              disabled={isSubmitting || !isInitialLoaded}
+              className={`w-full bg-yellow-500 hover:bg-yellow-600 text-black font-black py-4 rounded-xl uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/10 flex justify-center items-center ${!isInitialLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (isLoginMode ? "Se connecter" : "S'inscrire")}
+              {isSubmitting || !isInitialLoaded ? <Loader2 className="animate-spin" size={20} /> : (isLoginMode ? "Se connecter" : "S'inscrire")}
             </button>
+            {!isInitialLoaded && (
+              <p className="text-center text-yellow-500 text-[10px] font-bold uppercase tracking-widest animate-pulse mt-4">
+                Connexion au serveur en cours... (Patientez svp)
+              </p>
+            )}
           </form>
 
           <div className="mt-8 pt-8 border-t border-zinc-800 text-center">

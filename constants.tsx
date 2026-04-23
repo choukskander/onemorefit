@@ -2,10 +2,10 @@
 import { ClassType, GymClass } from './types';
 
 export const CLASS_CAPACITIES: Record<ClassType, number> = {
-  [ClassType.Pump]: 20,
+  [ClassType.Pump]: 16,
   [ClassType.HIT]: 20,
   [ClassType.Bodycombat]: 30,
-  [ClassType.Spinning]: 10,
+  [ClassType.Spinning]: 12,
   [ClassType.Femmes100]: 25,
   [ClassType.Abdos]: 25,
   [ClassType.CrossTraining]: 25,
