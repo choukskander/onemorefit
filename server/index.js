@@ -5,18 +5,23 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import cron from 'node-cron';
 
-// Load env vars
+// ------------------------------------------------------------------
+// Initialisation & Configuration
+// ------------------------------------------------------------------
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ------------------------------------------------------------------
 // Middleware
+// ------------------------------------------------------------------
 const allowedOrigins = [
   'https://onemorefit.netlify.app',
   'http://localhost:3000',
   'http://localhost:5173',
 ];
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -29,23 +34,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
 app.use(express.json());
 
 // ------------------------------------------------------------------
-// MongoDB Connection
-// ------------------------------------------------------------------
-mongoose.connect(process.env.MONGO_URI, {
-  maxPoolSize: 10, // Limite le pool de connexions pour le free tier
-  serverSelectionTimeoutMS: 5000, // Timeout pour la sélection du serveur
-  socketTimeoutMS: 45000, // Timeout des sockets
-}).then(() => {
-  console.log('✅ Connected to MongoDB');
-}).catch((err) => {
-  console.error('❌ MongoDB Connection Error:', err);
-});
-
-// ------------------------------------------------------------------
-// Models
+// Schemas & Models (MongoDB créera users, reservations, gymclasses, contacts)
 // ------------------------------------------------------------------
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
@@ -84,7 +77,7 @@ const GymClass = mongoose.model('GymClass', gymClassSchema);
 const Contact = mongoose.model('Contact', contactSchema);
 
 // ------------------------------------------------------------------
-// Email Service (Nodemailer + Gmail)
+// Service Email (Nodemailer + Gmail)
 // ------------------------------------------------------------------
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -181,8 +174,10 @@ const sendSubscriptionReminderEmail = async (memberEmail, memberName, expiryDate
 };
 
 // ------------------------------------------------------------------
-// Cron Job — Vérification quotidienne à 08:00
+// Cron Jobs
 // ------------------------------------------------------------------
+
+// Vérification quotidienne à 08:00
 cron.schedule('0 8 * * *', async () => {
   console.log('🔍 [CRON] Vérification des abonnements expirant demain...');
 
@@ -213,9 +208,7 @@ cron.schedule('0 8 * * *', async () => {
   timezone: 'Africa/Tunis'
 });
 
-// ------------------------------------------------------------------
-// Cron Job — Nettoyage mensuel des anciennes données (1er du mois à 02:00)
-// ------------------------------------------------------------------
+// Nettoyage mensuel des anciennes données (1er du mois à 02:00)
 cron.schedule('0 2 1 * *', async () => {
   console.log('🧹 [CRON] Nettoyage des anciennes données...');
 
@@ -226,11 +219,9 @@ cron.schedule('0 2 1 * *', async () => {
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
   try {
-    // Supprimer les contacts de plus d'un an
     const deletedContacts = await Contact.deleteMany({ createdAt: { $lt: oneYearAgo } });
     console.log(`🗑️ ${deletedContacts.deletedCount} anciens contacts supprimés`);
 
-    // Supprimer les réservations passées de plus d'un mois
     const deletedReservations = await Reservation.deleteMany({
       timestamp: { $lt: Math.floor(oneMonthAgo.getTime() / 1000) }
     });
@@ -243,11 +234,10 @@ cron.schedule('0 2 1 * *', async () => {
   timezone: 'Africa/Tunis'
 });
 
-console.log('⏰ Cron job planifié : vérification quotidienne à 08h00 (heure de Tunis)');
-console.log('⏰ Cron job de nettoyage planifié : mensuel le 1er à 02h00 (heure de Tunis)');
+console.log('⏰ Cron jobs planifiés avec succès (fuseau horaire : Africa/Tunis)');
 
 // ------------------------------------------------------------------
-// API Routes
+// Routes API
 // ------------------------------------------------------------------
 
 // --- USERS ---
@@ -269,24 +259,22 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users/sync', async (req, res) => {
   try {
     const users = req.body;
-    console.log(`🔄 Syncing ${users.length} users...`);
-    // Protect admin from being deleted during sync if needed
-    const admin = await User.findOne({ email: 'admin@gmail.com' });
+    console.log(`🔄 Synchronisation de ${users.length} utilisateurs...`);
+    
     await User.deleteMany({ email: { $ne: 'admin@gmail.com' } });
     
     const usersToInsert = users.filter((u) => u.email !== 'admin@gmail.com');
     if (usersToInsert.length > 0) {
       await User.insertMany(usersToInsert);
     }
-    console.log(`✅ Users synchronized (Admin preserved, ${usersToInsert.length} others)`);
+    console.log(`✅ Utilisateurs synchronisés (${usersToInsert.length} insérés, Admin préservé)`);
     res.json({ message: 'Users synchronized (Admin preserved)' });
   } catch (err) {
-    console.error('❌ Sync error users:', err.message);
+    console.error('❌ Erreur synchronisation users:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT — Mettre à jour l'abonnement d'un membre
 app.put('/api/users/:email/subscription', async (req, res) => {
   try {
     const { email } = req.params;
@@ -311,13 +299,12 @@ app.put('/api/users/:email/subscription', async (req, res) => {
   }
 });
 
-// POST — Test d'envoi d'email manuel (Admin uniquement)
 app.post('/api/send-reminder/:email', async (req, res) => {
   try {
     const { email } = req.params;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
-    if (!user.subscriptionEndDate) return res.status(400).json({ error: 'Aucune date d\'abonnement définie' });
+    if (!user.subscriptionEndDate) return res.status(400).json({ error: "Aucune date d'abonnement définie" });
 
     await sendSubscriptionReminderEmail(user.email, user.name, user.subscriptionEndDate);
     res.json({ message: `Email envoyé à ${user.email}` });
@@ -330,7 +317,12 @@ app.post('/api/send-reminder/:email', async (req, res) => {
 app.get('/api/reservations', async (req, res) => {
   try {
     const reservations = await Reservation.find();
-    res.json(reservations.map(r => ({ id: r.id, userEmail: r.userEmail, classId: r.classId, timestamp: r.timestamp })));
+    res.json(reservations.map(r => ({
+      id: r.id,
+      userEmail: r.userEmail,
+      classId: r.classId,
+      timestamp: r.timestamp
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -339,59 +331,51 @@ app.get('/api/reservations', async (req, res) => {
 app.post('/api/reservations/sync', async (req, res) => {
   try {
     const reservations = req.body;
-    console.log(`🔄 Syncing ${reservations.length} reservations...`);
+    console.log(`🔄 Synchronisation de ${reservations.length} réservations...`);
     await Reservation.deleteMany({});
     if (reservations.length > 0) {
       await Reservation.insertMany(reservations);
     }
-    console.log(`✅ Reservations synchronized`);
+    console.log(`✅ Réservations synchronisées`);
     res.json({ message: 'Reservations synchronized' });
   } catch (err) {
-    console.error('❌ Sync error reservations:', err.message);
+    console.error('❌ Erreur synchronisation reservations:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE — Annuler une réservation
 app.delete('/api/reservations/:reservationId', async (req, res) => {
   try {
     const { reservationId } = req.params;
     const { userEmail } = req.body;
 
-    // Trouver la réservation
     const reservation = await Reservation.findOne({ id: reservationId });
     if (!reservation) {
       return res.status(404).json({ error: 'Réservation introuvable' });
     }
 
-    // Vérifier que c'est bien l'utilisateur qui a fait la réservation
     if (reservation.userEmail !== userEmail) {
       return res.status(403).json({ error: 'Non autorisé' });
     }
 
-    // Récupérer la classe pour vérifier l'heure
     const gymClass = await GymClass.findOne({ id: reservation.classId });
     if (!gymClass) {
       return res.status(404).json({ error: 'Cours introuvable' });
     }
 
-    // Vérifier que le cours n'a pas commencé
     const now = new Date();
     const [hours, minutes] = gymClass.time.split(':').map(Number);
     const classStart = new Date();
     classStart.setHours(hours, minutes, 0, 0);
 
-    // Convert day name to check if it's today
     const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
     const todayIndex = now.getDay();
     const todayName = days[todayIndex];
 
-    // Si c'est aujourd'hui et le cours a déjà commencé, refuser l'annulation
     if (gymClass.day === todayName && now >= classStart) {
-      return res.status(400).json({ error: 'Impossible d\'annuler : le cours a déjà commencé' });
+      return res.status(400).json({ error: "Impossible d'annuler : le cours a déjà commencé" });
     }
 
-    // Supprimer la réservation
     await Reservation.deleteOne({ id: reservationId });
     console.log(`❌ Réservation annulée : ${reservationId}`);
 
@@ -422,15 +406,15 @@ app.get('/api/classes', async (req, res) => {
 app.post('/api/classes/sync', async (req, res) => {
   try {
     const classes = req.body;
-    console.log(`🔄 Syncing ${classes.length} classes...`);
+    console.log(`🔄 Synchronisation de ${classes.length} cours...`);
     await GymClass.deleteMany({});
     if (classes.length > 0) {
       await GymClass.insertMany(classes);
     }
-    console.log(`✅ Classes synchronized`);
+    console.log(`✅ Cours synchronisés`);
     res.json({ message: 'Classes synchronized' });
   } catch (err) {
-    console.error('❌ Sync error classes:', err.message);
+    console.error('❌ Erreur synchronisation classes:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -498,22 +482,37 @@ app.delete('/api/contacts/:id', async (req, res) => {
   }
 });
 
-// Start Server
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  
-  // Seed admin if not exists
-  try {
-    const admin = await User.findOne({ email: 'admin@gmail.com' });
-    if (!admin) {
-      await User.create({
-        email: 'admin@gmail.com',
-        password: '12345678',
-        name: 'Administrateur'
-      });
-      console.log('👑 Admin user seeded');
+// ------------------------------------------------------------------
+// Connexion MongoDB & Démarrage du Serveur
+// ------------------------------------------------------------------
+mongoose.connect(process.env.MONGO_URI, {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+})
+  .then(async () => {
+    console.log('✅ Connected to MongoDB');
+
+    // Création automatique du compte administrateur si inexistant
+    try {
+      const admin = await User.findOne({ email: 'admin@gmail.com' });
+      if (!admin) {
+        await User.create({
+          email: 'admin@gmail.com',
+          password: '12345678',
+          name: 'Administrateur'
+        });
+        console.log('👑 Admin user seeded in "users" collection');
+      }
+    } catch (err) {
+      console.error('❌ Erreur lors du seed admin:', err.message);
     }
-  } catch (err) {
-    console.error('Failed to seed admin:', err);
-  }
-});
+
+    // Démarrage du serveur Express
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB Connection Error:', err);
+  });
